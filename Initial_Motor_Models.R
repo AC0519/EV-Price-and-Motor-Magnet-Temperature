@@ -4,6 +4,7 @@ library(caret)
 library(e1071) 
 library(corrplot)
 library(lattice)
+library(caTools)
 library(factoextra)
 
 df <- motor_cleaned_beck
@@ -27,20 +28,13 @@ pc_var$contrib #contributions to the PCs
 
 #Subset data into test and train
 set.seed(100)
-sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(0.8,0.2))
-train  <- df[sample, ]
-test   <- df[!sample, ]
+sample <- sample.split(df$u_q, SplitRatio = .7)
+dfTrain <- subset(df, sample==T)
+dfTest <- subset(df, sample==F)
 
-#torque as a function of everything
-lmTorqueAllPredictors <- lm(torque ~ . , data = train)
-summary(lmTorqueAllPredictors)
-
-#prediction power of torque as a function of everything
-PredTorque = predict(lmTorqueAllPredictors, test)
-#prediction results show over 99% accuracy
-lmValues1 = data.frame(obs = test$torque, pred = PredTorque)
-defaultSummary(lmValues1)
-
+#PCR Regression
+PCR <- train(x = dfTrain , y = endpointsTrain$V2, method = "pcr", 
+             trControl = ctrl, tuneLength = 3) 
 
 
 
