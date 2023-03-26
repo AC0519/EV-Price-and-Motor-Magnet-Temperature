@@ -7,11 +7,12 @@ library(lattice)
 library(caTools)
 library(factoextra)
 library(glmnet)
+library(MASS)
 
 df <- motor_data
 df$profile_id <- as.factor(df$profile_id)
 #moves stator_winding to front of df for ease of comparison later
-df <- select(df, stator_winding, everything())
+df <- dplyr::select(df, stator_winding, everything())
 
 
 ###PCA###
@@ -40,7 +41,7 @@ summary(Lm_everything)
 predicted_SW_everything <- predict(Lm_everything, newdata = testing_data)
 
 testing_data$pred_SW_E <- predicted_SW_everything
-testing_data <- select(testing_data, stator_winding, pred_SW_E, everything())
+testing_data <- dplyr::select(testing_data, stator_winding, pred_SW_E, everything())
 
 rsme <- RMSE(testing_data$stator_winding, testing_data$pred_SW_E)
 cat("RSME:", rsme, "\n")
@@ -55,7 +56,7 @@ LmCv <- train(stator_winding ~ ., data = training_data, method = 'lm', trControl
 print(LmCv)
 pred_cv <- predict(LmCv, newdata = testing_data)
 testing_data$predCvSW <- pred_cv
-testing_data <- select(testing_data, stator_winding, predCvSW, everything())
+testing_data <- dplyr::select(testing_data, stator_winding, predCvSW, everything())
 
 rsme <- RMSE(testing_data$stator_winding, testing_data$predCvSW)
 cat("RSME:", rsme, "\n")
@@ -90,7 +91,7 @@ ggplot(testing_data, aes(stator_winding, predictedSW))+
 #########
 #select only necessary values informed by Sid's unsupervised analysis
 df <- motor_data %>% 
-      select('stator_tooth','stator_yoke','coolant','pm','stator_winding')
+      dplyr::select('stator_tooth','stator_yoke','coolant','pm','ambient','stator_winding')
 
 set.seed(42)
 train <- sample(nrow(df), 0.7 * nrow(df))
@@ -101,9 +102,62 @@ fit <- cv.glmnet(x = as.matrix(training_data[, -5]), y = training_data$stator_wi
 predictions <- predict(fit, newx = as.matrix(testing_data[, -5]), s = "lambda.min")
 #s = lambda.min selects the tuning parameter that gives min cross val error.  
 
+print(fit)
+
 pred <- as.data.frame(predictions)
 
-df <- cbind(testing_data, pred$lambda.min)
+pred <- pred %>% 
+        dplyr::rename(predSW = lambda.min)
 
-rsme <- RMSE(df$stator_winding, df$`pred$lambda.min`)
+df <- cbind(testing_data, pred)
+
+rsme <- RMSE(df$stator_winding, df$pred)
 cat("RSME:", rsme, "\n")
+
+ggplot(df, aes(stator_winding, pred))+
+  geom_point()+
+  stat_smooth(method=lm)
+
+str#####
+#Robust linear regression
+####
+
+df <- motor_data %>% 
+  dplyr::select('stator_tooth','stator_yoke','coolant','pm','stator_winding','ambient')
+
+
+set.seed(42)
+train <- sample(nrow(df), 0.7 * nrow(df))
+training_data <- df[train,]
+testing_data <- df[-train,]
+
+formula <- stator_winding ~ stator_yoke+stator_tooth+coolant+pm+ambient
+
+model <- rlm(formula, data = training_data, method = "MM")
+summary(model)
+cv <- trainControl(method = "cv", number = 10)
+cv_model <- train(formula, data = training_data, method = "rlm", trControl = cv)
+summary(cv_model)
+
+
+predictedSW_RL <- predict(model, testing_data)
+testing_data$predictedSW_RL <- predictedSW_RL
+
+rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
+cat("RSME:", rsme, "\n")
+
+predictedSW_RL <- predict(cv_model, testing_data)
+testing_data$predictedSW_RL <- predictedSW_RL
+
+rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
+cat("RSME:", rsme, "\n")
+
+
+
+#The non-cross validated model returns a better initial RSME but the cross
+#validated model performs better on the testing data.  
+
+
+
+
+
