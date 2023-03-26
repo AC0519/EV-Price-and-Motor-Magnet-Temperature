@@ -117,12 +117,22 @@ pred <- pred %>%
 df <- cbind(testing_data, pred)
 
 rsme <- RMSE(df$stator_winding, df$pred)
-cat("RSME:", rsme, "\n")
+cat("RMSE:", rsme, "\n")
 
 ggplot(df, aes(stator_winding, pred))+
   geom_point()+
   stat_smooth(method=lm)
 
+# Varification of RMSE
+actualResponse <- testing_data$stator_winding
+rmse <- sqrt(mean((actualResponse - predictions)^2))
+rmse
+
+# Calculate R-squared
+tss <- sum((actualResponse - mean(actualResponse))^2)
+rss <- sum((actualResponse - predictions)^2)
+r_squared <- 1 - (rss / tss)
+r_squared
 
 
 #####
