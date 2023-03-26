@@ -29,6 +29,11 @@ pc_var <- get_pca_var(pc)
 pc_var$contrib #contributions to the PCs
 
 
+
+##########
+#Linear Regression
+#########
+
 #Subset data into test and train
 set.seed(42)
 train <- sample(nrow(df), 0.7 * nrow(df))
@@ -118,7 +123,9 @@ ggplot(df, aes(stator_winding, pred))+
   geom_point()+
   stat_smooth(method=lm)
 
-str#####
+
+
+#####
 #Robust linear regression
 ####
 
@@ -151,7 +158,6 @@ testing_data$predictedSW_RL <- predictedSW_RL
 
 rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
 cat("RSME:", rsme, "\n")
-
 
 
 #The non-cross validated model returns a better initial RSME but the cross
