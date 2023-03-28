@@ -11,6 +11,8 @@ library(MASS)
 
 df <- motor_data
 df$profile_id <- as.factor(df$profile_id)
+
+
 #moves stator_winding to front of df for ease of comparison later
 df <- dplyr::select(df, stator_winding, everything())
 
@@ -43,17 +45,19 @@ testing_data <- df[-train,]
 #Simple linear regression attempting to predict stator_winding based on everything
 Lm_everything <- lm(stator_winding ~ ., data = training_data)
 summary(Lm_everything)
-predicted_SW_everything <- predict(Lm_everything, newdata = testing_data)
 
+predicted_SW_everything <- predict(Lm_everything, newdata = testing_data)
 testing_data$pred_SW_E <- predicted_SW_everything
 testing_data <- dplyr::select(testing_data, stator_winding, pred_SW_E, everything())
 
-rsme <- RMSE(testing_data$stator_winding, testing_data$pred_SW_E)
-cat("RSME:", rsme, "\n")
+rmse <- RMSE(testing_data$stator_winding, testing_data$pred_SW_E)
+cat("rmse:", rmse, "\n")
 
 ggplot(testing_data, aes(stator_winding, predicted_SW_everything))+
   geom_point()+
   stat_smooth(method=lm)
+
+plot(Lm_everything$residuals)
 
 #with cv on lm
 ctrl <- trainControl(method = "cv", number = 10)
@@ -63,8 +67,8 @@ pred_cv <- predict(LmCv, newdata = testing_data)
 testing_data$predCvSW <- pred_cv
 testing_data <- dplyr::select(testing_data, stator_winding, predCvSW, everything())
 
-rsme <- RMSE(testing_data$stator_winding, testing_data$predCvSW)
-cat("RSME:", rsme, "\n")
+rmse <- RMSE(testing_data$stator_winding, testing_data$predCvSW)
+cat("rmse:", rmse, "\n")
 
 #Linear regression attempting to predict Stator_Winding based on top variables from PCA
 ctrl <- trainControl(method = "cv", number = 10)
@@ -79,8 +83,8 @@ summary(Lm)
 predictedSW <- predict(Lm, testing_data)
 testing_data$predictedSW <- predictedSW
 
-rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW)
-cat("RSME:", rsme, "\n")
+rmse <- RMSE(testing_data$stator_winding, testing_data$predictedSW)
+cat("rmse:", rmse, "\n")
 
 plot(testing_data$stator_winding, testing_data$predictedSW)
 
@@ -116,12 +120,15 @@ pred <- pred %>%
 
 df <- cbind(testing_data, pred)
 
-rsme <- RMSE(df$stator_winding, df$pred)
-cat("RMSE:", rsme, "\n")
+rmse <- RMSE(df$stator_winding, df$pred)
+cat("RMSE:", rmse, "\n")
 
 ggplot(df, aes(stator_winding, pred))+
   geom_point()+
   stat_smooth(method=lm)
+
+resid <- (df$stator_winding - df$predSW)
+plot(resid)
 
 # Varification of RMSE
 actualResponse <- testing_data$stator_winding
@@ -160,20 +167,31 @@ summary(cv_model)
 predictedSW_RL <- predict(model, testing_data)
 testing_data$predictedSW_RL <- predictedSW_RL
 
-rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
-cat("RSME:", rsme, "\n")
+rmse <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
+cat("rmse:", rmse, "\n")
 
 predictedSW_RL <- predict(cv_model, testing_data)
 testing_data$predictedSW_RL <- predictedSW_RL
 
-rsme <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
-cat("RSME:", rsme, "\n")
+rmse <- RMSE(testing_data$stator_winding, testing_data$predictedSW_RL)
+cat("rmse:", rmse, "\n")
 
-
-#The non-cross validated model returns a better initial RSME but the cross
+#The non-cross validated model returns a better initial rmse but the cross
 #validated model performs better on the testing data.  
 
+# Varification of RMSE
+actualResponse <- testing_data$stator_winding
+rmse <- sqrt(mean((actualResponse - predictedSW_RL)^2))
+rmse
 
+# Calculate R-squared
+tss <- sum((actualResponse - mean(actualResponse))^2)
+rss <- sum((actualResponse - predictedSW_RL)^2)
+r_squared <- 1 - (rss / tss)
+r_squared
 
+ggplot(testing_data, aes(stator_winding, predictedSW_RL))+
+  geom_point()+
+  stat_smooth(method=lm)
 
-
+plot(resid(cv_model))
