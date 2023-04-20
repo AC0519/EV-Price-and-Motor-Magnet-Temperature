@@ -195,3 +195,107 @@ ggplot(testing_data, aes(stator_winding, predictedSW_RL))+
   stat_smooth(method=lm)
 
 plot(resid(cv_model))
+
+
+#########
+#Logistic Regression to predict pass/fail
+#########
+
+
+#Assuming a NEMA class B insulation is the wire used in this motors data
+#According to NEMA's website Class B is the most common class used in 60 cycle US motors
+
+#Create a column of pass/fail based on a max temp allowance of the stator winding at 130 Celsius
+df <- dplyr::select(df, -profile_id)
+df$insulation_result <- ifelse(df$stator_winding > 130, "Failure", "Pass")
+
+df %>% 
+  group_by(insulation_result) %>% 
+  summarize(total = n())
+
+df$insulation_result <- as.factor(df$insulation_result)
+
+
+set.seed(42)
+train <- createDataPartition(df$stator_winding, p = 0.7, list = F)
+dftrain <- df[train,]
+dftest <- df[-train,]
+
+dftrain %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+dftest %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+Trainx <- dftrain[,-13]
+Trainy <- dftrain$insulation_result
+Testx <- dftest[,-13]
+Testy <- dftest$insulation_result
+
+ctrl <- trainControl(method = "CV", number = 10)
+
+
+logisticTune <- train(x = Trainx, y = Trainy, 
+                      method = "multinom", metric = "Accuracy", 
+                      trControl = ctrl)
+
+logisticTune 
+
+testResults <- data.frame(obs = Testy,
+                          logistic = predict(logisticTune, Testx))
+
+confusionMatrix(data = predict(logisticTune, Testx), 
+                reference = Testy)
+
+#initially tried this model on all data and the results are terrible.  Not a single failure was accurately #predicted by the model I am now going to try the same with the preselected data from the PCA analysis
+
+df <- motor_data %>% 
+  dplyr::select('stator_tooth','stator_yoke','coolant','pm','ambient','stator_winding')
+
+df$insulation_result <- ifelse(df$stator_winding > 130, "Failure", "Pass")
+
+df %>% 
+  group_by(insulation_result) %>% 
+  summarize(total = n())
+#We had 2845 failures
+
+df$insulation_result <- as.factor(df$insulation_result)
+
+
+set.seed(42)
+train <- createDataPartition(df$stator_winding, p = 0.7, list = F)
+dftrain <- df[train,]
+dftest <- df[-train,]
+
+dftrain %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+dftest %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+Trainx <- dftrain[,-7]
+Trainy <- dftrain$insulation_result
+Testx <- dftest[,-7]
+Testy <- dftest$insulation_result
+
+ctrl <- trainControl(method = "CV", number = 10)
+
+
+logisticTune <- train(x = Trainx, y = Trainy, 
+                      method = "glm", metric = "Accuracy", 
+                      trControl = ctrl)
+
+logisticTune 
+
+testResults <- data.frame(obs = Testy,
+                          logistic = predict(logisticTune, Testx))
+
+confusionMatrix(data = predict(logisticTune, Testx), 
+                reference = Testy)
+
+
+# Initial results were still atrocious.  However, switching to a glm as the training method instead of multinom gave 100% accurate results on the test data 
