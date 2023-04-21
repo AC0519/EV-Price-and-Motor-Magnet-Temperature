@@ -206,6 +206,7 @@ plot(resid(cv_model))
 #According to NEMA's website Class B is the most common class used in 60 cycle US motors
 
 #Create a column of pass/fail based on a max temp allowance of the stator winding at 130 Celsius
+df <- motor_data
 df <- dplyr::select(df, -profile_id)
 df$insulation_result <- ifelse(df$stator_winding > 130, "Failure", "Pass")
 
