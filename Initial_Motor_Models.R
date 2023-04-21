@@ -299,3 +299,49 @@ confusionMatrix(data = predict(logisticTune, Testx),
 
 
 # Initial results were still atrocious.  However, switching to a glm as the training method instead of multinom gave 100% accurate results on the test data 
+
+#Since this was directly based on temp, can I remove this variable and predict based on the others?
+df <- motor_data
+df$profile_id <- as.factor(df$profile_id)
+df <- dplyr::select(df, stator_winding, everything())
+df <- dplyr::select(df, -profile_id)
+df$insulation_result <- ifelse(df$stator_winding > 130, "Failure", "Pass")
+df$insulation_result <- as.factor(df$insulation_result)
+df <- df %>% 
+  dplyr::select('stator_tooth','stator_yoke','coolant','pm','ambient','insulation_result')
+
+
+
+set.seed(42)
+train <- createDataPartition(df$stator_tooth, p = 0.7, list = F)
+dftrain <- df[train,]
+dftest <- df[-train,]
+
+dftrain %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+dftest %>% 
+  group_by(insulation_result == "Failure") %>% 
+  summarize(total = n())
+
+Trainx <- dftrain[,-6]
+Trainy <- dftrain$insulation_result
+Testx <- dftest[,-6]
+Testy <- dftest$insulation_result
+
+ctrl <- trainControl(method = "CV", number = 10)
+
+
+logisticTune <- train(x = Trainx, y = Trainy, 
+                      method = "glm", metric = "Accuracy", 
+                      trControl = ctrl)
+
+logisticTune 
+
+testResults <- data.frame(obs = Testy,
+                          logistic = predict(logisticTune, Testx))
+
+confusionMatrix(data = predict(logisticTune, Testx), 
+                reference = Testy)
+
