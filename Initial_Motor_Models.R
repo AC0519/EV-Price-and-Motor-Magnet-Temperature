@@ -8,6 +8,7 @@ library(caTools)
 library(factoextra)
 library(glmnet)
 library(MASS)
+library(ROCR)
 
 df <- motor_data
 df$profile_id <- as.factor(df$profile_id)
@@ -299,7 +300,14 @@ confusionMatrix(data = predict(logisticTune, Testx),
                 reference = Testy)
 
 
-# Initial results were still atrocious.  However, switching to a glm as the training method instead of multinom gave 100% accurate results on the test data 
+# Initial results were still atrocious.  However, switching to a glm as the training method instead of multinom gave 100% accurate results on the test data.  But....this is probably an over fit.
+
+#plot the ROC curve
+predict0 <- predict(logisticTune, type = 'raw')
+ROCRpred0 <- prediction(as.numeric(predict0),as.numeric(dftrain$insulation_result))
+ROCRperf0<- performance(ROCRpred0, 'tpr', 'fpr')
+plot(ROCRperf0, colorize=F, text.adj=c(-0.2,1.7))
+
 
 #Since this was directly based on temp, can I remove this variable and predict based on the others?
 df <- motor_data
@@ -345,4 +353,21 @@ testResults <- data.frame(obs = Testy,
 
 confusionMatrix(data = predict(logisticTune, Testx), 
                 reference = Testy)
+
+#plot the ROC curve
+predict0 <- predict(logisticTune, type = 'raw')
+ROCRpred0 <- prediction(as.numeric(predict0),as.numeric(dftrain$insulation_result))
+ROCRperf0<- performance(ROCRpred0, 'tpr', 'fpr')
+plot(ROCRperf0, colorize=F, text.adj=c(-0.2,1.7))
+
+
+
+
+
+
+
+
+
+
+
 
