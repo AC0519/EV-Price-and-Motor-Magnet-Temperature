@@ -1,3 +1,3 @@
 # EV-Price-and-Motor-Magnet-Temperature
-Understanding The most efficient electric vehicles on the market and the critical variables needed for price prediction.
+In this study, we highlight the value of accurate motor temperature predictions and precise classification of stator-winding insulation conditions as key factors in optimizing electric motor production.
 
